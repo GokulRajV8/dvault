@@ -1,278 +1,192 @@
-"""
-The operations are two levels deep and denoted by two characters.
-
-First character denotes whether it is a note or file (n, f)
-Second character denotes whether read, write or delete (r, w, d)
-"""
-
-import base64
 import os
 
-from . import Fernet
-
 from . import Constants
+from . import DBEngine
 from . import Messages
+from . import Queries
+from . import Utils
+from . import VaultCore
 
 
-def execute(menu_name: str, **params) -> str:
-    internal_local_scope = {}
-    exec(
-        f"menu = menu_{menu_name}",
-        globals(),
-        internal_local_scope,
-    )
-    menu = internal_local_scope["menu"]
+class OperationsModule:
+    def __init__(self, vault_core: VaultCore, db_engine: DBEngine):
+        self.vault_core = vault_core
+        self.db_engine = db_engine
 
-    if menu_name in ("n", "f"):
-        return menu(params["fernet"], params["files"])
-    else:
-        return menu(params["fernet"], params["vault_dir"], params["files"])
+    def execute(self, option: str):
+        entry_type = None
+        query_to_use = None
+        match option:
+            case "n":
+                entry_type = "Notes"
+                query_to_use = Queries.GET_NOTES
+            case "f":
+                entry_type = "Files"
+                query_to_use = Queries.GET_FILES
+            case _:
+                print("Invalid option")
+                return
 
+        while True:
+            list_of_entries = {
+                id: self.vault_core.decrypt_string(name_enc)
+                for id, name_enc in self.db_engine.execute(query_to_use).fetchall()
+            }
+            print(f"{entry_type} present in the vault :")
+            [print("    - " + entry) for entry in list(list_of_entries.values())]
 
-## Top level menus
+            option = input("Do you want to read/write or delete (r, w, d) : ")
+            match option:
+                case "r":
+                    self.execute_r(entry_type)
+                case "w":
+                    try:
+                        self.execute_w(entry_type)
+                    except Exception as e:
+                        if e.args[0] == "SQLITE_CONSTRAINT_UNIQUE":
+                            print("Entry already exists")
+                        else:
+                            raise
+                case "d":
+                    self.execute_d(entry_type)
+                case "!":
+                    break
+                case _:
+                    print("Invalid option")
 
-
-def menu_n(fernet: Fernet, files: list[str]) -> str:
-    print(Messages.NOTES_IN_VAULT)
-    for file in files:
-        decrypted_note_name = fernet.decrypt(file[:-8].encode()).decode()
-        print(f"\t{decrypted_note_name}")
-
-    option = input(Messages.READ_WRITE_OR_DELETE)
-    if option == "!":
-        return ""
-
-    match option:
-        case "r":
-            return "nr"
-        case "w":
-            return "nw"
-        case "d":
-            return "nd"
-        case _:
-            print(Messages.INVALID_OPTION)
-            return "n"
-
-
-def menu_f(fernet: Fernet, files: list[str]) -> str:
-    print(Messages.FILES_IN_VAULT)
-    for file in files:
-        decrypted_file_name = fernet.decrypt(file[:-8].encode()).decode()
-        print(f"\t{decrypted_file_name}")
-
-    option = input(Messages.READ_WRITE_OR_DELETE)
-    if option == "!":
-        return ""
-
-    match option:
-        case "r":
-            return "fr"
-        case "w":
-            return "fw"
-        case "d":
-            return "fd"
-        case _:
-            print(Messages.INVALID_OPTION)
-            return "f"
-
-
-## Menus for notes
-
-
-def menu_nr(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    note_file_name = input(Messages.ENTER_NOTE_NAME)
-    if note_file_name == "!":
-        return "n"
-
-    note_file_name_enc = (
-        fernet._encrypt_from_parts(
-            note_file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_NOTE
-    )
-
-    if note_file_name_enc in files:
-        with open(
-            f"{vault_dir}{Constants.SLASH}{note_file_name_enc}", "rb"
-        ) as file_to_be_read:
-            file_content = fernet.decrypt(
-                base64.urlsafe_b64encode(file_to_be_read.read())
-            )
-            print("Note content >>\n" + file_content.decode())
-        return "n"
-    else:
-        print(Messages.NOTE_NOT_PRESENT)
-        return "nr"
-
-
-def menu_nw(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    note_file_name = input(Messages.ENTER_FILE_NAME)
-    if note_file_name == "!":
-        return "n"
-
-    note_file_name_enc = (
-        fernet._encrypt_from_parts(
-            note_file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_NOTE
-    )
-
-    if note_file_name_enc in files:
-        print(Messages.NOTE_ALREADY_PRESENT)
-        return "nw"
-
-    note_file_dir = input(Messages.ENTER_DIRECTORY_NAME)
-    if note_file_dir == "!":
-        return "n"
-
-    if os.path.isfile(f"{note_file_dir}{Constants.SLASH}{note_file_name}"):
-        with open(
-            f"{note_file_dir}{Constants.SLASH}{note_file_name}", "rb"
-        ) as file_to_be_read:
-            with open(
-                f"{vault_dir}{Constants.SLASH}{note_file_name_enc}", "wb"
-            ) as file_to_be_written:
-                file_to_be_written.write(
-                    base64.urlsafe_b64decode(fernet.encrypt(file_to_be_read.read()))
-                )
-        print(Messages.NOTE_CREATED)
-        return "n"
-    else:
-        print(Messages.FILE_NOT_PRESENT)
-        return "nw"
-
-
-def menu_nd(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    note_file_name = input(Messages.ENTER_NOTE_NAME)
-    if note_file_name == "!":
-        return "n"
-
-    note_file_name_enc = (
-        fernet._encrypt_from_parts(
-            note_file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_NOTE
-    )
-
-    if note_file_name_enc in files:
-        os.remove(f"{vault_dir}{Constants.SLASH}{note_file_name_enc}")
-        print(Messages.NOTE_REMOVED)
-        return "n"
-    else:
-        print(Messages.NOTE_NOT_PRESENT)
-        return "nr"
-
-
-## Menus for files
-
-
-def menu_fr(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    file_name = input(Messages.ENTER_FILE_NAME)
-    if file_name == "!":
-        return "f"
-
-    file_name_enc = (
-        fernet._encrypt_from_parts(
-            file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_FILE
-    )
-
-    if file_name_enc in files:
-        dest_dir_name = input(Messages.ENTER_DIRECTORY_NAME)
-        if dest_dir_name == "!":
-            return "f"
-
-        if os.path.isdir(dest_dir_name):
-            dest_file = f"{dest_dir_name}{Constants.SLASH}{file_name}"
-
-            if os.path.isfile(dest_file):
-                print(Messages.FILE_ALREADY_PRESENT)
-                return "fr"
-            else:
-                with open(
-                    f"{vault_dir}{Constants.SLASH}{file_name_enc}", "rb"
-                ) as file_to_be_read:
-                    with open(dest_file, "wb") as file_to_be_written:
-                        file_to_be_written.write(
-                            fernet.decrypt(
-                                base64.urlsafe_b64encode(file_to_be_read.read())
-                            )
-                        )
-                    print(Messages.FILE_CREATED)
-                    return "f"
-
+    def execute_r(self, entry_type: str):
+        entry_name = input(Messages.ENTER_NAME)
+        if entry_name == "!":
+            return
+        if entry_type == "Notes":
+            self.read_note(entry_name)
         else:
-            print(Messages.DIRECTORY_NOT_PRESENT)
-            return "fr"
-    else:
-        print(Messages.FILE_NOT_PRESENT)
-        return "fr"
+            self.read_file(entry_name)
 
+    def execute_w(self, entry_type: str):
+        entry_name = input(Messages.ENTER_NAME)
+        if entry_name == "!":
+            return
+        entry_file = input(Messages.ENTER_FILE)
+        if entry_file == "!":
+            return
+        if entry_type == "Notes":
+            self.write_note(entry_name, entry_file)
+        else:
+            self.write_file(entry_name, entry_file)
 
-def menu_fw(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    file_name = input(Messages.ENTER_FILE_NAME)
-    if file_name == "!":
-        return "f"
+    def execute_d(self, entry_type: str):
+        entry_name = input(Messages.ENTER_NAME)
+        if entry_name == "!":
+            return
+        if entry_type == "Notes":
+            self.del_note(entry_name)
+        else:
+            self.del_file(entry_name)
 
-    file_name_enc = (
-        fernet._encrypt_from_parts(
-            file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_FILE
-    )
+    def read_note(self, entry_name: str):
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
+        obj_names = [
+            entry[2]
+            for entry in self.db_engine.execute(
+                Queries.GET_OBJECTS, (file_id,)
+            ).fetchall()
+        ]
 
-    if file_name_enc in files:
-        print(Messages.FILE_ALREADY_PRESENT)
-        return "nw"
+        obj_array = b""
+        for obj_name in obj_names:
+            with open(os.path.join(Constants.VAULT_DIR, obj_name), "rb") as obj_file:
+                obj_array += obj_file.read()
 
-    file_dir = input(Messages.ENTER_DIRECTORY_NAME)
-    if file_dir == "!":
-        return "n"
+        dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
+        print(dec_obj_array.decode())
 
-    if os.path.isfile(f"{file_dir}{Constants.SLASH}{file_name}"):
-        with open(f"{file_dir}{Constants.SLASH}{file_name}", "rb") as file_to_be_read:
-            with open(
-                f"{vault_dir}{Constants.SLASH}{file_name_enc}", "wb"
-            ) as file_to_be_written:
-                file_to_be_written.write(
-                    base64.urlsafe_b64decode(fernet.encrypt(file_to_be_read.read()))
-                )
-        print(Messages.FILE_CREATED)
-        return "f"
-    else:
-        print(Messages.FILE_NOT_PRESENT)
-        return "fw"
+    def write_note(self, entry_name: str, entry_file: str):
+        obj_name = self.db_engine.get_reference("curr_obj")
+        with open(entry_file, "r") as note_file:
+            with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
+                obj_file.write(self.vault_core.encrypt_bytes(note_file.read().encode()))
 
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        self.db_engine.execute(Queries.INSERT_NOTE, (enc_name,))
+        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
+        self.db_engine.execute(Queries.INSERT_OBJECT, (file_id, 0, obj_name))
+        self.db_engine.put_reference("curr_obj", Utils.get_next_object_name(obj_name))
 
-def menu_fd(fernet: Fernet, vault_dir: str, files: list[str]) -> str:
-    file_name = input(Messages.ENTER_FILE_NAME)
-    if file_name == "!":
-        return "f"
+    def del_note(self, entry_name: str):
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
+        objects = [
+            (entry[0], entry[2])
+            for entry in self.db_engine.execute(
+                Queries.GET_OBJECTS, (file_id,)
+            ).fetchall()
+        ]
 
-    file_name_enc = (
-        fernet._encrypt_from_parts(
-            file_name.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        ).decode()
-        + Constants.FILE_FORMAT_FILE
-    )
+        for object in objects:
+            object_file = os.path.join(Constants.VAULT_DIR, object[1])
+            if os.path.isfile(object_file):
+                os.remove(object_file)
+            self.db_engine.execute(Queries.DEL_OBJECT, (object[0],))
 
-    if file_name_enc in files:
-        os.remove(f"{vault_dir}{Constants.SLASH}{file_name_enc}")
-        print(Messages.FILE_REMOVED)
-        return "n"
-    else:
-        print(Messages.FILE_NOT_PRESENT)
-        return "nr"
+        self.db_engine.execute(Queries.DEL_FILE, (file_id,))
+
+    def read_file(self, entry_name: str):
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        dest_file = input(Messages.ENTER_FILE)
+        if dest_file == "!":
+            return
+        if os.path.isfile(dest_file):
+            response = input("File already exists, do you want to override (y, n) :")
+            if response == "!":
+                return
+            if response != "y":
+                return
+
+        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
+        obj_names = [
+            entry[2]
+            for entry in self.db_engine.execute(
+                Queries.GET_OBJECTS, (file_id,)
+            ).fetchall()
+        ]
+
+        obj_array = b""
+        for obj_name in obj_names:
+            with open(os.path.join(Constants.VAULT_DIR, obj_name), "rb") as obj_file:
+                obj_array += obj_file.read()
+
+        dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
+        with open(dest_file, "wb") as data_file:
+            data_file.write(dec_obj_array)
+
+    def write_file(self, entry_name: str, entry_file: str):
+        obj_name = self.db_engine.get_reference("curr_obj")
+        with open(entry_file, "rb") as data_file:
+            with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
+                obj_file.write(self.vault_core.encrypt_bytes(data_file.read()))
+
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        self.db_engine.execute(Queries.INSERT_FILE, (enc_name,))
+        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
+        self.db_engine.execute(Queries.INSERT_OBJECT, (file_id, 0, obj_name))
+        self.db_engine.put_reference("curr_obj", Utils.get_next_object_name(obj_name))
+
+    def del_file(self, entry_name: str):
+        enc_name = self.vault_core.encrypt_string(entry_name)
+        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
+        objects = [
+            (entry[0], entry[2])
+            for entry in self.db_engine.execute(
+                Queries.GET_OBJECTS, (file_id,)
+            ).fetchall()
+        ]
+
+        for object in objects:
+            object_file = os.path.join(Constants.VAULT_DIR, object[1])
+            if os.path.isfile(object_file):
+                os.remove(object_file)
+            self.db_engine.execute(Queries.DEL_OBJECT, (object[0],))
+
+        self.db_engine.execute(Queries.DEL_FILE, (file_id,))
