@@ -2,7 +2,6 @@ import os
 
 from . import Constants
 from . import DBEngine
-from . import Messages
 from . import Utils
 from . import VaultCore
 
@@ -23,7 +22,7 @@ class Operations:
                 entry_type = Constants.ENTRY_TYPE_FILES
                 method_to_use = self.db_engine.get_files
             case _:
-                Utils.print(Messages.INVALID_OPTION)
+                Utils.print("Invalid option")
                 return
 
         while True:
@@ -34,39 +33,31 @@ class Operations:
             Utils.print(entry_type + " present in the vault :")
             Utils.print_list(list(list_of_entries.values()))
 
-            option = Utils.input(Messages.ENTER_OPERATION)
-            match option:
-                case Constants.OPTION_READ:
-                    try:
-                        self.execute_r(entry_type)
-                    except Exception as e:
-                        if e.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
-                            Utils.print(Messages.ENTRY_DOES_NOT_EXIST)
-                        else:
-                            raise
-                case Constants.OPTION_WRITE:
-                    try:
-                        self.execute_w(entry_type)
-                    except Exception as e:
-                        if e.args[0] == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
-                            Utils.print(Messages.ENTRY_ALREADY_EXISTS)
-                        else:
-                            raise
-                case Constants.OPTION_DELETE:
-                    try:
-                        self.execute_d(entry_type)
-                    except Exception as e:
-                        if e.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
-                            Utils.print(Messages.ENTRY_DOES_NOT_EXIST)
-                        else:
-                            raise
-                case Constants.OPTION_BACK:
-                    break
-                case _:
-                    Utils.print(Messages.INVALID_OPTION)
+            option = Utils.input(
+                f"Do you want to read/write or delete ({Constants.OPTION_READ}, {Constants.OPTION_WRITE}, {Constants.OPTION_DELETE}) : "
+            )
+            entry_name = Utils.input("Enter name : ")
+            try:
+                match option:
+                    case Constants.OPTION_READ:
+                        self.execute_r(entry_type, entry_name)
+                    case Constants.OPTION_WRITE:
+                        self.execute_w(entry_type, entry_name)
+                    case Constants.OPTION_DELETE:
+                        self.execute_d(entry_type, entry_name)
+                    case Constants.OPTION_BACK:
+                        break
+                    case _:
+                        Utils.print("Invalid option")
+            except Exception as e:
+                if e.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
+                    Utils.print("Entry does not exist")
+                elif e.args[0] == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
+                    Utils.print("Entry already exists")
+                else:
+                    raise
 
-    def execute_r(self, message: str):
-        entry_name = Utils.input(Messages.ENTER_NAME)
+    def execute_r(self, message: str, entry_name: str):
         if entry_name == Constants.OPTION_BACK:
             return
         if message == Constants.ENTRY_TYPE_NOTES:
@@ -74,11 +65,10 @@ class Operations:
         else:
             self.read_file(entry_name)
 
-    def execute_w(self, message: str):
-        entry_name = Utils.input(Messages.ENTER_NAME)
+    def execute_w(self, message: str, entry_name: str):
         if entry_name == Constants.OPTION_BACK:
             return
-        entry_location = Utils.input(Messages.ENTER_LOCATION)
+        entry_location = Utils.input("Enter location : ")
         if entry_location == Constants.OPTION_BACK:
             return
         if message == Constants.ENTRY_TYPE_NOTES:
@@ -86,8 +76,7 @@ class Operations:
         else:
             self.write_file(entry_name, entry_location)
 
-    def execute_d(self, message: str):
-        entry_name = Utils.input(Messages.ENTER_NAME)
+    def execute_d(self, message: str, entry_name: str):
         if entry_name == Constants.OPTION_BACK:
             return
         if message == Constants.ENTRY_TYPE_NOTES:
@@ -109,7 +98,7 @@ class Operations:
 
     def write_note(self, entry_name: str, entry_location: str):
         if not os.path.isfile(os.path.join(entry_location, entry_name)):
-            Utils.print(Messages.FILE_DOES_NOT_EXIST)
+            Utils.print("File does not exist")
             return
 
         obj_name = self.db_engine.get_reference(Constants.REF_CURR_OBJ)
@@ -139,11 +128,13 @@ class Operations:
         enc_name = self.vault_core.encrypt_string(entry_name)
         objects = self.db_engine.get_file_objects(enc_name)
 
-        dest_location = Utils.input(Messages.ENTER_LOCATION)
+        dest_location = Utils.input("Enter location : ")
         if dest_location == Constants.OPTION_BACK:
             return
         if os.path.isfile(os.path.join(dest_location, entry_name)):
-            response = Utils.input(Messages.ENTER_OVERRIDE_FILE)
+            response = Utils.input(
+                f"File already exists, do you want to override ({Constants.OPTION_YES}, {Constants.OPTION_NO}) : "
+            )
             if response in [Constants.OPTION_BACK, Constants.OPTION_NO]:
                 return
 
@@ -158,7 +149,7 @@ class Operations:
 
     def write_file(self, entry_name: str, entry_location: str):
         if not os.path.isfile(os.path.join(entry_location, entry_name)):
-            Utils.print(Messages.FILE_DOES_NOT_EXIST)
+            Utils.print("File does not exist")
             return
 
         obj_name = self.db_engine.get_reference(Constants.REF_CURR_OBJ)

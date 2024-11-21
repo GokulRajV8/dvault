@@ -3,7 +3,6 @@ A program to encrypt and decrypt data stored in vaults
 """
 
 from .constants import Constants
-from .messages import Messages
 
 from .utils import Utils
 

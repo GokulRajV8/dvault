@@ -1,9 +1,7 @@
-import getpass
 import os
 
 from . import Constants
 from . import DBEngine
-from . import Messages
 from . import Operations
 from . import Utils
 from . import VaultCore
@@ -14,7 +12,7 @@ def create_empty_db() -> bool:
         os.path.isfile(Constants.VAULT_DB_FILE)
         and os.path.getsize(Constants.VAULT_DB_FILE) != 0
     ):
-        Utils.print(Messages.INITIALIZING_VAULT)
+        Utils.print("Vault is empty, initializing new vault ...")
         open(Constants.VAULT_DB_FILE, "w").close()
         return True
     else:
@@ -31,15 +29,17 @@ def init_db(db_engine: DBEngine, verifier_string: str):
 def verify_password(db_engine: DBEngine, verifier_string: str):
     verifier_string_from_db = db_engine.get_reference(Constants.REF_VERIFIER)
     if verifier_string_from_db == verifier_string:
-        Utils.print(Messages.PASSWORD_VERIFICATION_SUCCESS)
+        Utils.print("Password verification success")
     else:
-        raise ValueError(Messages.PASSWORD_VERIFICATION_FAILURE)
+        raise ValueError("Password verification failed")
 
 
 def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
     operations_module = Operations(vault_core, db_engine)
     while True:
-        option = Utils.input(Messages.ENTER_NOTES_OR_FILES)
+        option = Utils.input(
+            f"Do you want to process notes or files ({Constants.OPTION_NOTES}, {Constants.OPTION_FILES}) : "
+        )
         if option == Constants.OPTION_BACK:
             break
         else:
@@ -51,13 +51,17 @@ if __name__ == "__main__":
     try:
         # checking for presence of vault
         if not os.path.isdir(Constants.VAULT_DIR):
-            raise FileNotFoundError(Messages.VAULT_NOT_PRESENT)
+            raise FileNotFoundError(
+                "Vault directory is not present at your home directory\n"
+                "Kindly create ~/Vault directory before starting me"
+            )
 
         # if the database is not present or empty, create a new one
         is_new_vault = create_empty_db()
 
         # take password from user and generate vault core for encryption and decryption
-        vault_core = VaultCore(getpass.getpass(Messages.ENTER_PASSWORD))
+        password = Utils.input_password("Enter the password for vault : ")
+        vault_core = VaultCore(password)
         verifier_string = vault_core.encrypt_string(Constants.VERIFIER_STRING)
 
         # creating database engine
@@ -71,11 +75,13 @@ if __name__ == "__main__":
             verify_password(db_engine, verifier_string)
 
         # welcome prompt and menu loop
-        Utils.print(Messages.WELCOME)
+        Utils.print(
+            f"Welcome to your personal Vault\nEnter {Constants.OPTION_BACK} to go back at any point"
+        )
         menu_loop(vault_core, db_engine)
 
         # exit prompt
-        Utils.print(Messages.EXIT)
+        Utils.print("Thank you for using Vault")
 
     except Exception as e:
         Utils.print(e.args[0])

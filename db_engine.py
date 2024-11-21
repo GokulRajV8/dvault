@@ -1,7 +1,6 @@
 import sqlite3
 
 from . import Constants
-from . import Messages
 
 
 class DBEngine:
@@ -33,7 +32,10 @@ class DBEngine:
             if e.sqlite_errorname == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
                 raise RuntimeError(Constants.ERR_SQLITE_CONSTRAINT_UNIQUE)
             else:
-                raise RuntimeError(Messages.DB_FATAL_ERROR)
+                raise RuntimeError(
+                    "Fatal error occurred while accessing database, most likely due to corruption.\n"
+                    "Kindly delete all files present in ~/Vault as they are tampered"
+                )
 
     def __get_objects(self, file_id: str) -> list[tuple]:
         raw_data = self.__execute(

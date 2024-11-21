@@ -5,7 +5,6 @@ from cryptography.fernet import InvalidToken
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from . import Constants
-from . import Messages
 
 
 class VaultCore:
@@ -18,23 +17,6 @@ class VaultCore:
             + Constants.MY_BIRTH_DAY_BYTE_ARRAY
         )
         self.__common_prefix_len = len(self.__common_prefix)
-
-    def encrypt_string(self, input: str) -> bytes:
-        result = self.__fernet._encrypt_from_parts(
-            input.encode(),
-            Constants.MY_BIRTH_DAY_UNIX_SECONDS,
-            Constants.MY_BIRTH_DAY_BYTE_ARRAY,
-        )
-        return base64.urlsafe_b64decode(result)[self.__common_prefix_len :]
-
-    def decrypt_string(self, input: bytes) -> str:
-        try:
-            result = self.__fernet.decrypt(
-                base64.urlsafe_b64encode(self.__common_prefix + input)
-            )
-            return result.decode()
-        except InvalidToken:
-            raise ValueError(Messages.DEC_FATAL_ERROR)
 
     def encrypt_bytes(self, input: bytes) -> bytes:
         result = self.__fernet._encrypt_from_parts(
@@ -51,4 +33,10 @@ class VaultCore:
             )
             return result
         except InvalidToken:
-            raise ValueError(Messages.DEC_FATAL_ERROR)
+            raise ValueError("Fatal error occurred while decrypting data")
+
+    def encrypt_string(self, input: str) -> bytes:
+        return self.encrypt_bytes(input.encode())
+
+    def decrypt_string(self, input: bytes) -> str:
+        return self.decrypt_bytes(input).decode()

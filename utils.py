@@ -1,3 +1,5 @@
+import getpass
+
 from . import Constants
 
 
@@ -23,6 +25,12 @@ class Utils:
     def input(prompt: str) -> str:
         return input(
             "\n" + f"{Constants.COLOR_CLI_INPUT}{prompt}{Constants.COLOR_CLI_END}"
+        )
+
+    @staticmethod
+    def input_password(prompt: str) -> str:
+        return getpass.getpass(
+            f"{Constants.COLOR_CLI_INPUT}{prompt}{Constants.COLOR_CLI_END}"
         )
 
     @staticmethod
