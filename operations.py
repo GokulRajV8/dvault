@@ -3,7 +3,6 @@ import os
 from . import Constants
 from . import DBEngine
 from . import Messages
-from . import Queries
 from . import Utils
 from . import VaultCore
 
@@ -15,22 +14,22 @@ class Operations:
 
     def execute(self, option: str):
         entry_type = None
-        query_to_use = None
+        method_to_use = None
         match option:
             case "n":
                 entry_type = "Notes"
-                query_to_use = Queries.GET_NOTES
+                method_to_use = self.db_engine.get_notes
             case "f":
                 entry_type = "Files"
-                query_to_use = Queries.GET_FILES
+                method_to_use = self.db_engine.get_files
             case _:
                 Utils.print("Invalid option")
                 return
 
         while True:
             list_of_entries = {
-                id: self.vault_core.decrypt_string(name_enc)
-                for id, name_enc in self.db_engine.execute(query_to_use).fetchall()
+                id: self.vault_core.decrypt_string(enc_name)
+                for id, enc_name in method_to_use()
             }
             Utils.print(f"{entry_type} present in the vault :")
             Utils.print_list(list(list_of_entries.values()))
@@ -98,18 +97,11 @@ class Operations:
 
     def read_note(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.is_note_present(enc_name)
-        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
-        obj_names = [
-            entry[2]
-            for entry in self.db_engine.execute(
-                Queries.GET_OBJECTS, (file_id,)
-            ).fetchall()
-        ]
+        objects = self.db_engine.get_note_objects(enc_name)
 
         obj_array = b""
-        for obj_name in obj_names:
-            with open(os.path.join(Constants.VAULT_DIR, obj_name), "rb") as obj_file:
+        for object in objects:
+            with open(os.path.join(Constants.VAULT_DIR, object[1]), "rb") as obj_file:
                 obj_array += obj_file.read()
 
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
@@ -122,33 +114,25 @@ class Operations:
                 obj_file.write(self.vault_core.encrypt_bytes(note_file.read().encode()))
 
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.execute(Queries.INSERT_NOTE, (enc_name,))
-        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
-        self.db_engine.execute(Queries.INSERT_OBJECT, (file_id, 0, obj_name))
+        self.db_engine.insert_note_and_objects(enc_name, obj_name)
         self.db_engine.put_reference("curr_obj", Utils.get_next_object_name(obj_name))
 
     def del_note(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.is_note_present(enc_name)
-        file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
-        objects = [
-            (entry[0], entry[2])
-            for entry in self.db_engine.execute(
-                Queries.GET_OBJECTS, (file_id,)
-            ).fetchall()
-        ]
+        objects = self.db_engine.get_note_objects(enc_name)
 
         for object in objects:
             object_file = os.path.join(Constants.VAULT_DIR, object[1])
             if os.path.isfile(object_file):
                 os.remove(object_file)
-            self.db_engine.execute(Queries.DEL_OBJECT, (object[0],))
+            self.db_engine.delete_object(object[0])
 
-        self.db_engine.execute(Queries.DEL_FILE, (file_id,))
+        self.db_engine.delete_note(enc_name)
 
     def read_file(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.is_file_present(enc_name)
+        objects = self.db_engine.get_file_objects(enc_name)
+
         dest_file = Utils.input(Messages.ENTER_FILE)
         if dest_file == "!":
             return
@@ -161,17 +145,9 @@ class Operations:
             if response != "y":
                 return
 
-        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
-        obj_names = [
-            entry[2]
-            for entry in self.db_engine.execute(
-                Queries.GET_OBJECTS, (file_id,)
-            ).fetchall()
-        ]
-
         obj_array = b""
-        for obj_name in obj_names:
-            with open(os.path.join(Constants.VAULT_DIR, obj_name), "rb") as obj_file:
+        for object in objects:
+            with open(os.path.join(Constants.VAULT_DIR, object[1]), "rb") as obj_file:
                 obj_array += obj_file.read()
 
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
@@ -185,26 +161,17 @@ class Operations:
                 obj_file.write(self.vault_core.encrypt_bytes(data_file.read()))
 
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.execute(Queries.INSERT_FILE, (enc_name,))
-        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
-        self.db_engine.execute(Queries.INSERT_OBJECT, (file_id, 0, obj_name))
+        self.db_engine.insert_file_and_objects(enc_name, obj_name)
         self.db_engine.put_reference("curr_obj", Utils.get_next_object_name(obj_name))
 
     def del_file(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
-        self.db_engine.is_file_present(enc_name)
-        file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
-        objects = [
-            (entry[0], entry[2])
-            for entry in self.db_engine.execute(
-                Queries.GET_OBJECTS, (file_id,)
-            ).fetchall()
-        ]
+        objects = self.db_engine.get_file_objects(enc_name)
 
         for object in objects:
             object_file = os.path.join(Constants.VAULT_DIR, object[1])
             if os.path.isfile(object_file):
                 os.remove(object_file)
-            self.db_engine.execute(Queries.DEL_OBJECT, (object[0],))
+            self.db_engine.delete_object(object[0])
 
-        self.db_engine.execute(Queries.DEL_FILE, (file_id,))
+        self.db_engine.delete_file(enc_name)

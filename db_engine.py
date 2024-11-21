@@ -3,22 +3,6 @@ import sqlite3
 from . import Messages
 
 
-class Queries:
-    GET_NOTES = "SELECT id, name FROM files WHERE type = 'note'"
-    GET_FILES = "SELECT id, name FROM files WHERE type = 'file'"
-
-    GET_NOTE_ID = "SELECT id FROM files WHERE type = 'note' AND name = ?"
-    GET_FILE_ID = "SELECT id FROM files WHERE type = 'file' AND name = ?"
-    GET_OBJECTS = "SELECT id, page, name FROM objects WHERE file_id = ?"
-
-    INSERT_NOTE = "INSERT INTO files(name, type) VALUES(?, 'note')"
-    INSERT_FILE = "INSERT INTO files(name, type) VALUES(?, 'file')"
-    INSERT_OBJECT = "INSERT INTO objects(file_id, page, name) VALUES(?, ?, ?)"
-
-    DEL_FILE = "DELETE FROM files WHERE id = ?"
-    DEL_OBJECT = "DELETE FROM objects WHERE id = ?"
-
-
 class DBEngine:
     def __init__(self, db_file: str):
         self.__db_connection = sqlite3.connect(db_file)
@@ -39,7 +23,7 @@ class DBEngine:
             ")"
         )
 
-    def execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
+    def __execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         try:
             result_cursor = self.__db_cursor.execute(query, params)
             self.__db_connection.commit()
@@ -50,23 +34,40 @@ class DBEngine:
             else:
                 raise RuntimeError(Messages.DB_FATAL_ERROR)
 
-    def _is_present(self, name: str, type: str):
-        if type == "note":
-            result = self.execute(Queries.GET_NOTE_ID, (name,)).fetchone()
-        elif type == "file":
-            result = self.execute(Queries.GET_FILE_ID, (name,)).fetchone()
+    def __get_objects(self, file_id: str) -> list[tuple]:
+        raw_data = self.__execute(
+            "SELECT id, page, name FROM objects WHERE file_id = ?", (file_id,)
+        ).fetchall()
+        return [(entry[0], entry[2]) for entry in raw_data]
+
+    def __get_note_id(self, enc_name: str) -> str:
+        result = self.__execute(
+            "SELECT id FROM files WHERE type = 'note' AND name = ?", (enc_name,)
+        ).fetchone()
 
         if result is None:
             raise RuntimeError("NO_DATA_FOUND")
+        else:
+            return result[0]
 
-    def is_note_present(self, name: str):
-        self._is_present(name, "note")
+    def __get_file_id(self, enc_name: str) -> str:
+        result = self.__execute(
+            "SELECT id FROM files WHERE type = 'file' AND name = ?", (enc_name,)
+        ).fetchone()
 
-    def is_file_present(self, name: str):
-        self._is_present(name, "file")
+        if result is None:
+            raise RuntimeError("NO_DATA_FOUND")
+        else:
+            return result[0]
+
+    def __insert_object(self, file_id: str, obj_name: str):
+        self.__execute(
+            "INSERT INTO objects(file_id, page, name) VALUES(?, ?, ?)",
+            (file_id, 0, obj_name),
+        )
 
     def get_reference(self, name: str):
-        result = self.execute(
+        result = self.__execute(
             "SELECT value FROM reference WHERE name = ?", (name,)
         ).fetchone()
         if result is None:
@@ -76,11 +77,54 @@ class DBEngine:
 
     def put_reference(self, name: str, value):
         if self.get_reference(name) is None:
-            self.execute(
+            self.__execute(
                 "INSERT INTO reference(name, value) VALUES(?, ?)", (name, value)
             )
         else:
-            self.execute("UPDATE reference SET value = ? WHERE name = ?", (value, name))
+            self.__execute(
+                "UPDATE reference SET value = ? WHERE name = ?", (value, name)
+            )
+
+    def get_notes(self):
+        return self.__execute(
+            "SELECT id, name FROM files WHERE type = 'note'"
+        ).fetchall()
+
+    def get_files(self):
+        return self.__execute(
+            "SELECT id, name FROM files WHERE type = 'file'"
+        ).fetchall()
+
+    def get_note_objects(self, enc_name: str) -> list[tuple]:
+        note_id = self.__get_note_id(enc_name)
+        return self.__get_objects(note_id)
+
+    def insert_note_and_objects(self, enc_name: str, obj_name: str):
+        self.__execute("INSERT INTO files(name, type) VALUES(?, 'note')", (enc_name,))
+        note_id = self.__get_note_id(enc_name)
+        self.__insert_object(note_id, obj_name)
+
+    def get_file_objects(self, enc_name: str) -> list[tuple]:
+        file_id = self.__get_file_id(enc_name)
+        return self.__get_objects(file_id)
+
+    def insert_file_and_objects(self, enc_name: str, obj_name: str):
+        self.__execute("INSERT INTO files(name, type) VALUES(?, 'file')", (enc_name,))
+        file_id = self.__get_file_id(enc_name)
+        self.__insert_object(file_id, obj_name)
+
+    def delete_note(self, enc_name: str):
+        self.__execute(
+            "DELETE FROM files WHERE type = 'note' AND name = ?", (enc_name,)
+        )
+
+    def delete_file(self, enc_name: str):
+        self.__execute(
+            "DELETE FROM files WHERE type = 'file' AND name = ?", (enc_name,)
+        )
+
+    def delete_object(self, object_id: str):
+        self.__execute("DELETE FROM objects WHERE id = ?", (object_id,))
 
     def close(self):
         self.__db_cursor.close()
