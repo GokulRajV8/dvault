@@ -1,15 +1,8 @@
 import base64
-import sys
 
-try:
-    from cryptography.fernet import Fernet
-    from cryptography.fernet import InvalidToken
-    from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-except ImportError:
-    print(
-        "cryptography package is required to run the program\nKindly run `pip install cryptography` before starting me",
-    )
-    sys.exit(0)
+from cryptography.fernet import Fernet
+from cryptography.fernet import InvalidToken
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from . import Constants
 from . import Messages

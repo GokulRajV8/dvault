@@ -23,23 +23,24 @@ def create_empty_db() -> bool:
 
 def init_db(db_engine: DBEngine, verifier_string: str):
     db_engine.create_tables()
-    db_engine.put_reference("verifier", verifier_string)
-    db_engine.put_reference("curr_obj", "aaaaaaaa")
+    db_engine.put_reference(Constants.REF_VERSION, Constants.APP_VERSION)
+    db_engine.put_reference(Constants.REF_VERIFIER, verifier_string)
+    db_engine.put_reference(Constants.REF_CURR_OBJ, Utils.get_next_object_name())
 
 
 def verify_password(db_engine: DBEngine, verifier_string: str):
-    verifier_string_from_db = db_engine.get_reference("verifier")
-    if verifier_string_from_db != verifier_string:
-        raise ValueError(Messages.PASSWORD_VERIFICATION_FAILURE)
-    else:
+    verifier_string_from_db = db_engine.get_reference(Constants.REF_VERIFIER)
+    if verifier_string_from_db == verifier_string:
         Utils.print(Messages.PASSWORD_VERIFICATION_SUCCESS)
+    else:
+        raise ValueError(Messages.PASSWORD_VERIFICATION_FAILURE)
 
 
 def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
     operations_module = Operations(vault_core, db_engine)
     while True:
-        option = Utils.input("Do you want to process notes or files (n, f) : ")
-        if option == "!":
+        option = Utils.input(Messages.ENTER_NOTES_OR_FILES)
+        if option == Constants.OPTION_BACK:
             break
         else:
             operations_module.execute(option)
@@ -57,7 +58,7 @@ if __name__ == "__main__":
 
         # take password from user and generate vault core for encryption and decryption
         vault_core = VaultCore(getpass.getpass(Messages.ENTER_PASSWORD))
-        verifier_string = vault_core.encrypt_string("success")
+        verifier_string = vault_core.encrypt_string(Constants.VERIFIER_STRING)
 
         # creating database engine
         db_engine = DBEngine(Constants.VAULT_DB_FILE)

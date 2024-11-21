@@ -1,5 +1,6 @@
 import sqlite3
 
+from . import Constants
 from . import Messages
 
 
@@ -29,8 +30,8 @@ class DBEngine:
             self.__db_connection.commit()
             return result_cursor
         except sqlite3.Error as e:
-            if e.sqlite_errorname == "SQLITE_CONSTRAINT_UNIQUE":
-                raise RuntimeError(e.sqlite_errorname)
+            if e.sqlite_errorname == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
+                raise RuntimeError(Constants.ERR_SQLITE_CONSTRAINT_UNIQUE)
             else:
                 raise RuntimeError(Messages.DB_FATAL_ERROR)
 
@@ -46,7 +47,7 @@ class DBEngine:
         ).fetchone()
 
         if result is None:
-            raise RuntimeError("NO_DATA_FOUND")
+            raise RuntimeError(Constants.ERR_SQLITE_NO_DATA_FOUND)
         else:
             return result[0]
 
@@ -56,7 +57,7 @@ class DBEngine:
         ).fetchone()
 
         if result is None:
-            raise RuntimeError("NO_DATA_FOUND")
+            raise RuntimeError(Constants.ERR_SQLITE_NO_DATA_FOUND)
         else:
             return result[0]
 
