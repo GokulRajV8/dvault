@@ -83,6 +83,8 @@ if __name__ == "__main__":
 
     except Exception as e:
         Utils.print(e.args[0])
+    except KeyboardInterrupt:
+        Utils.print("Interrupted")
 
     finally:
         # closing the db engine

@@ -29,8 +29,11 @@ class DBEngine:
             self.__db_connection.commit()
             return result_cursor
         except sqlite3.Error as e:
-            if e.sqlite_errorname == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
-                raise RuntimeError(Constants.ERR_SQLITE_CONSTRAINT_UNIQUE)
+            if e.sqlite_errorname in [
+                Constants.ERR_SQLITE_CONSTRAINT_UNIQUE,
+                Constants.ERR_SQLITE_BUSY,
+            ]:
+                raise RuntimeError(e.sqlite_errorname)
             else:
                 raise RuntimeError(
                     "Fatal error occurred while accessing database, most likely due to corruption.\n"

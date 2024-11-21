@@ -33,7 +33,7 @@ class VaultCore:
             )
             return result
         except InvalidToken:
-            raise ValueError("Fatal error occurred while decrypting data")
+            raise RuntimeError(Constants.ERR_DECRYPT)
 
     def encrypt_string(self, input: str) -> bytes:
         return self.encrypt_bytes(input.encode())

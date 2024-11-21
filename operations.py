@@ -47,11 +47,19 @@ class Operations:
                         break
                     case _:
                         Utils.print("Invalid option")
-            except Exception as e:
-                if e.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
+            except PermissionError:
+                Utils.print("Unable to create/delete files")
+            except FileNotFoundError:
+                Utils.print("Object is missing, kindly delete the entry")
+            except RuntimeError as re:
+                if re.args[0] == Constants.ERR_SQLITE_BUSY:
+                    Utils.print("Master db is locked")
+                elif re.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
                     Utils.print("Entry does not exist")
-                elif e.args[0] == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
+                elif re.args[0] == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
                     Utils.print("Entry already exists")
+                elif re.args[0] == Constants.ERR_DECRYPT:
+                    Utils.print("Object looks corrupted, kindly delete the entry")
                 else:
                     raise
 
@@ -100,9 +108,9 @@ class Operations:
             return
 
         obj_name = self.db_engine.get_reference(Constants.CURR_OBJ)
-        with open(os.path.join(entry_location, entry_name), "r") as note_file:
+        with open(os.path.join(entry_location, entry_name), "rb") as note_file:
             with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
-                obj_file.write(self.vault_core.encrypt_bytes(note_file.read().encode()))
+                obj_file.write(self.vault_core.encrypt_bytes(note_file.read()))
 
         enc_name = self.vault_core.encrypt_string(entry_name)
         self.db_engine.insert_note_and_objects(enc_name, obj_name)
@@ -115,10 +123,10 @@ class Operations:
         objects = self.db_engine.get_note_objects(enc_name)
 
         for object in objects:
+            self.db_engine.delete_object(object[0])
             object_file = os.path.join(Constants.VAULT_DIR, object[1])
             if os.path.isfile(object_file):
                 os.remove(object_file)
-            self.db_engine.delete_object(object[0])
 
         self.db_engine.delete_note(enc_name)
 
@@ -128,6 +136,9 @@ class Operations:
 
         dest_location = Utils.input("Enter location : ")
         if dest_location == Constants.OPTION_BACK:
+            return
+        if not os.path.isdir(dest_location):
+            Utils.print("Given destination does not exist")
             return
         if os.path.isfile(os.path.join(dest_location, entry_name)):
             response = Utils.input(
@@ -141,9 +152,8 @@ class Operations:
             with open(os.path.join(Constants.VAULT_DIR, object[1]), "rb") as obj_file:
                 obj_array += obj_file.read()
 
-        dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
         with open(os.path.join(dest_location, entry_name), "wb") as data_file:
-            data_file.write(dec_obj_array)
+            data_file.write(self.vault_core.decrypt_bytes(obj_array))
 
     def write_file(self, entry_name: str, entry_location: str):
         if not os.path.isfile(os.path.join(entry_location, entry_name)):
@@ -166,9 +176,9 @@ class Operations:
         objects = self.db_engine.get_file_objects(enc_name)
 
         for object in objects:
+            self.db_engine.delete_object(object[0])
             object_file = os.path.join(Constants.VAULT_DIR, object[1])
             if os.path.isfile(object_file):
                 os.remove(object_file)
-            self.db_engine.delete_object(object[0])
 
         self.db_engine.delete_file(enc_name)
