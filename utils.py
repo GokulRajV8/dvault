@@ -8,17 +8,17 @@ class Utils:
     def __get_colored_string(input: str, color_code: int) -> str:
         match color_code:
             case 1:
-                return f"\n\033[92m{input}\033[0m"
+                return f"\033[92m{input}\033[0m"
             case 2:
-                return f"\n\033[93m{input}\033[0m"
+                return f"\033[93m{input}\033[0m"
             case 3:
-                return f"\n\033[96m{input}\033[0m"
+                return f"\033[96m{input}\033[0m"
             case _:
                 return input
 
     @staticmethod
     def print(message: str):
-        print(Utils.__get_colored_string(message, 2))
+        print("\n" + Utils.__get_colored_string(message, 2))
 
     @staticmethod
     def print_list(input: list[str]):
@@ -28,11 +28,11 @@ class Utils:
 
     @staticmethod
     def input(prompt: str) -> str:
-        return input(Utils.__get_colored_string(prompt, 1))
+        return input("\n" + Utils.__get_colored_string(prompt, 1))
 
     @staticmethod
     def input_password(prompt: str) -> str:
-        return getpass.getpass(Utils.__get_colored_string(prompt, 1))
+        return getpass.getpass("\n" + Utils.__get_colored_string(prompt, 1))
 
     @staticmethod
     def get_next_object_name(object_name: str = None) -> str:
