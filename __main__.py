@@ -4,7 +4,7 @@ import os
 from . import Constants
 from . import DBEngine
 from . import Messages
-from . import OperationsModule
+from . import Operations
 from . import Utils
 from . import VaultCore
 
@@ -36,7 +36,7 @@ def verify_password(db_engine: DBEngine, verifier_string: str):
 
 
 def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
-    operations_module = OperationsModule(vault_core, db_engine)
+    operations_module = Operations(vault_core, db_engine)
     while True:
         option = Utils.input("Do you want to process notes or files (n, f) : ")
         if option == "!":

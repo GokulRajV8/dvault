@@ -8,7 +8,7 @@ from . import Utils
 from . import VaultCore
 
 
-class OperationsModule:
+class Operations:
     def __init__(self, vault_core: VaultCore, db_engine: DBEngine):
         self.vault_core = vault_core
         self.db_engine = db_engine

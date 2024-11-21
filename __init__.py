@@ -9,4 +9,4 @@ from .utils import Utils
 from .vault_core import VaultCore
 from .db_engine import DBEngine
 from .db_engine import Queries
-from .operations import OperationsModule
+from .operations import Operations
