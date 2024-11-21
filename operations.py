@@ -34,6 +34,8 @@ class Operations:
             Utils.print_list(list(list_of_entries.values()))
 
             option = Utils.input("Do you want to read/write or delete (r, w, d) : ")
+            if option == Constants.OPTION_BACK:
+                return
             entry_name = Utils.input("Enter name : ")
             try:
                 match option:
@@ -43,8 +45,6 @@ class Operations:
                         self.execute_w(entry_type, entry_name)
                     case "d":
                         self.execute_d(entry_type, entry_name)
-                    case Constants.OPTION_BACK:
-                        break
                     case _:
                         Utils.print("Invalid option")
             except PermissionError:
@@ -54,6 +54,7 @@ class Operations:
             except RuntimeError as re:
                 if re.args[0] == Constants.ERR_SQLITE_BUSY:
                     Utils.print("Master db is locked")
+                    self.db_engine.rollback()
                 elif re.args[0] == Constants.ERR_SQLITE_NO_DATA_FOUND:
                     Utils.print("Entry does not exist")
                 elif re.args[0] == Constants.ERR_SQLITE_CONSTRAINT_UNIQUE:
@@ -144,7 +145,7 @@ class Operations:
             response = Utils.input(
                 "File already exists, do you want to override (y, n) : "
             )
-            if response in [Constants.OPTION_BACK, Constants.OPTION_NO]:
+            if response in [Constants.OPTION_BACK, "n"]:
                 return
 
         obj_array = b""

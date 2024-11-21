@@ -23,6 +23,18 @@ class DBEngine:
             ")"
         )
 
+    def __execute_without_commit(
+        self, query: str, params: tuple = ()
+    ) -> sqlite3.Cursor:
+        try:
+            result_cursor = self.__db_cursor.execute(query, params)
+            return result_cursor
+        except sqlite3.Error:
+            raise RuntimeError(
+                "Fatal error occurred while accessing database, most likely due to corruption.\n"
+                "Kindly delete all files present in ~/Vault as they are tampered"
+            )
+
     def __execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         try:
             result_cursor = self.__db_cursor.execute(query, params)
@@ -41,13 +53,13 @@ class DBEngine:
                 )
 
     def __get_objects(self, file_id: str) -> list[tuple]:
-        raw_data = self.__execute(
+        raw_data = self.__execute_without_commit(
             "SELECT id, page, name FROM objects WHERE file_id = ?", (file_id,)
         ).fetchall()
         return [(entry[0], entry[2]) for entry in raw_data]
 
     def __get_note_id(self, enc_name: str) -> str:
-        result = self.__execute(
+        result = self.__execute_without_commit(
             "SELECT id FROM files WHERE type = 'note' AND name = ?", (enc_name,)
         ).fetchone()
 
@@ -57,7 +69,7 @@ class DBEngine:
             return result[0]
 
     def __get_file_id(self, enc_name: str) -> str:
-        result = self.__execute(
+        result = self.__execute_without_commit(
             "SELECT id FROM files WHERE type = 'file' AND name = ?", (enc_name,)
         ).fetchone()
 
@@ -73,7 +85,7 @@ class DBEngine:
         )
 
     def get_reference(self, name: str):
-        result = self.__execute(
+        result = self.__execute_without_commit(
             "SELECT value FROM reference WHERE name = ?", (name,)
         ).fetchone()
         if result is None:
@@ -92,12 +104,12 @@ class DBEngine:
             )
 
     def get_notes(self):
-        return self.__execute(
+        return self.__execute_without_commit(
             "SELECT id, name FROM files WHERE type = 'note'"
         ).fetchall()
 
     def get_files(self):
-        return self.__execute(
+        return self.__execute_without_commit(
             "SELECT id, name FROM files WHERE type = 'file'"
         ).fetchall()
 
@@ -131,6 +143,9 @@ class DBEngine:
 
     def delete_object(self, object_id: str):
         self.__execute("DELETE FROM objects WHERE id = ?", (object_id,))
+
+    def rollback(self):
+        self.__db_connection.rollback()
 
     def close(self):
         self.__db_cursor.close()
