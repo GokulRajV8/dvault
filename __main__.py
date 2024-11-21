@@ -21,13 +21,13 @@ def create_empty_db() -> bool:
 
 def init_db(db_engine: DBEngine, verifier_string: str):
     db_engine.create_tables()
-    db_engine.put_reference(Constants.REF_VERSION, Constants.APP_VERSION)
-    db_engine.put_reference(Constants.REF_VERIFIER, verifier_string)
-    db_engine.put_reference(Constants.REF_CURR_OBJ, Utils.get_next_object_name())
+    db_engine.put_reference("version", Constants.APP_VERSION)
+    db_engine.put_reference("verifier", verifier_string)
+    db_engine.put_reference(Constants.CURR_OBJ, Utils.get_next_object_name())
 
 
 def verify_password(db_engine: DBEngine, verifier_string: str):
-    verifier_string_from_db = db_engine.get_reference(Constants.REF_VERIFIER)
+    verifier_string_from_db = db_engine.get_reference("verifier")
     if verifier_string_from_db == verifier_string:
         Utils.print("Password verification success")
     else:
@@ -35,15 +35,13 @@ def verify_password(db_engine: DBEngine, verifier_string: str):
 
 
 def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
-    operations_module = Operations(vault_core, db_engine)
+    operations = Operations(vault_core, db_engine)
     while True:
-        option = Utils.input(
-            f"Do you want to process notes or files ({Constants.OPTION_NOTES}, {Constants.OPTION_FILES}) : "
-        )
+        option = Utils.input("Do you want to process notes or files (n, f) : ")
         if option == Constants.OPTION_BACK:
             break
         else:
-            operations_module.execute(option)
+            operations.execute(option)
 
 
 if __name__ == "__main__":
@@ -62,7 +60,7 @@ if __name__ == "__main__":
         # take password from user and generate vault core for encryption and decryption
         password = Utils.input_password("Enter the password for vault : ")
         vault_core = VaultCore(password)
-        verifier_string = vault_core.encrypt_string(Constants.VERIFIER_STRING)
+        verifier_string = vault_core.encrypt_string("success")
 
         # creating database engine
         db_engine = DBEngine(Constants.VAULT_DB_FILE)

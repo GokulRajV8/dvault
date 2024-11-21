@@ -15,10 +15,10 @@ class Operations:
         entry_type = None
         method_to_use = None
         match option:
-            case Constants.OPTION_NOTES:
+            case "n":
                 entry_type = Constants.ENTRY_TYPE_NOTES
                 method_to_use = self.db_engine.get_notes
-            case Constants.OPTION_FILES:
+            case "f":
                 entry_type = Constants.ENTRY_TYPE_FILES
                 method_to_use = self.db_engine.get_files
             case _:
@@ -33,17 +33,15 @@ class Operations:
             Utils.print(entry_type + " present in the vault :")
             Utils.print_list(list(list_of_entries.values()))
 
-            option = Utils.input(
-                f"Do you want to read/write or delete ({Constants.OPTION_READ}, {Constants.OPTION_WRITE}, {Constants.OPTION_DELETE}) : "
-            )
+            option = Utils.input("Do you want to read/write or delete (r, w, d) : ")
             entry_name = Utils.input("Enter name : ")
             try:
                 match option:
-                    case Constants.OPTION_READ:
+                    case "r":
                         self.execute_r(entry_type, entry_name)
-                    case Constants.OPTION_WRITE:
+                    case "w":
                         self.execute_w(entry_type, entry_name)
-                    case Constants.OPTION_DELETE:
+                    case "d":
                         self.execute_d(entry_type, entry_name)
                     case Constants.OPTION_BACK:
                         break
@@ -94,14 +92,14 @@ class Operations:
                 obj_array += obj_file.read()
 
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
-        Utils.print(dec_obj_array.decode(), is_colored=False)
+        print(dec_obj_array.decode())
 
     def write_note(self, entry_name: str, entry_location: str):
         if not os.path.isfile(os.path.join(entry_location, entry_name)):
             Utils.print("File does not exist")
             return
 
-        obj_name = self.db_engine.get_reference(Constants.REF_CURR_OBJ)
+        obj_name = self.db_engine.get_reference(Constants.CURR_OBJ)
         with open(os.path.join(entry_location, entry_name), "r") as note_file:
             with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
                 obj_file.write(self.vault_core.encrypt_bytes(note_file.read().encode()))
@@ -109,7 +107,7 @@ class Operations:
         enc_name = self.vault_core.encrypt_string(entry_name)
         self.db_engine.insert_note_and_objects(enc_name, obj_name)
         self.db_engine.put_reference(
-            Constants.REF_CURR_OBJ, Utils.get_next_object_name(obj_name)
+            Constants.CURR_OBJ, Utils.get_next_object_name(obj_name)
         )
 
     def del_note(self, entry_name: str):
@@ -133,7 +131,7 @@ class Operations:
             return
         if os.path.isfile(os.path.join(dest_location, entry_name)):
             response = Utils.input(
-                f"File already exists, do you want to override ({Constants.OPTION_YES}, {Constants.OPTION_NO}) : "
+                "File already exists, do you want to override (y, n) : "
             )
             if response in [Constants.OPTION_BACK, Constants.OPTION_NO]:
                 return
@@ -152,7 +150,7 @@ class Operations:
             Utils.print("File does not exist")
             return
 
-        obj_name = self.db_engine.get_reference(Constants.REF_CURR_OBJ)
+        obj_name = self.db_engine.get_reference(Constants.CURR_OBJ)
         with open(os.path.join(entry_location, entry_name), "rb") as data_file:
             with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
                 obj_file.write(self.vault_core.encrypt_bytes(data_file.read()))
@@ -160,7 +158,7 @@ class Operations:
         enc_name = self.vault_core.encrypt_string(entry_name)
         self.db_engine.insert_file_and_objects(enc_name, obj_name)
         self.db_engine.put_reference(
-            Constants.REF_CURR_OBJ, Utils.get_next_object_name(obj_name)
+            Constants.CURR_OBJ, Utils.get_next_object_name(obj_name)
         )
 
     def del_file(self, entry_name: str):
