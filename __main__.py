@@ -5,6 +5,7 @@ from . import Constants
 from . import DBEngine
 from . import Messages
 from . import OperationsModule
+from . import Utils
 from . import VaultCore
 
 
@@ -13,7 +14,7 @@ def create_empty_db() -> bool:
         os.path.isfile(Constants.VAULT_DB_FILE)
         and os.path.getsize(Constants.VAULT_DB_FILE) != 0
     ):
-        print(Messages.INITIALIZING_VAULT)
+        Utils.print(Messages.INITIALIZING_VAULT)
         open(Constants.VAULT_DB_FILE, "w").close()
         return True
     else:
@@ -31,13 +32,13 @@ def verify_password(db_engine: DBEngine, verifier_string: str):
     if verifier_string_from_db != verifier_string:
         raise ValueError(Messages.PASSWORD_VERIFICATION_FAILURE)
     else:
-        print(Messages.PASSWORD_VERIFICATION_SUCCESS)
+        Utils.print(Messages.PASSWORD_VERIFICATION_SUCCESS)
 
 
 def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
     operations_module = OperationsModule(vault_core, db_engine)
     while True:
-        option = input("Do you want to process notes or files (n, f) : ")
+        option = Utils.input("Do you want to process notes or files (n, f) : ")
         if option == "!":
             break
         else:
@@ -69,14 +70,14 @@ if __name__ == "__main__":
             verify_password(db_engine, verifier_string)
 
         # welcome prompt and menu loop
-        print(Messages.WELCOME)
+        Utils.print(Messages.WELCOME)
         menu_loop(vault_core, db_engine)
 
         # exit prompt
-        print(Messages.EXIT)
+        Utils.print(Messages.EXIT)
 
     except Exception as e:
-        print(e.args)
+        Utils.print(e.args[0])
 
     finally:
         # closing the db engine

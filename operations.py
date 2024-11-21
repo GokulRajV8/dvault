@@ -24,7 +24,7 @@ class OperationsModule:
                 entry_type = "Files"
                 query_to_use = Queries.GET_FILES
             case _:
-                print("Invalid option")
+                Utils.print("Invalid option")
                 return
 
         while True:
@@ -32,30 +32,42 @@ class OperationsModule:
                 id: self.vault_core.decrypt_string(name_enc)
                 for id, name_enc in self.db_engine.execute(query_to_use).fetchall()
             }
-            print(f"{entry_type} present in the vault :")
-            [print("    - " + entry) for entry in list(list_of_entries.values())]
+            Utils.print(f"{entry_type} present in the vault :")
+            Utils.print_list(list(list_of_entries.values()))
 
-            option = input("Do you want to read/write or delete (r, w, d) : ")
+            option = Utils.input("Do you want to read/write or delete (r, w, d) : ")
             match option:
                 case "r":
-                    self.execute_r(entry_type)
+                    try:
+                        self.execute_r(entry_type)
+                    except Exception as e:
+                        if e.args[0] == "NO_DATA_FOUND":
+                            Utils.print("Entry does not exist")
+                        else:
+                            raise
                 case "w":
                     try:
                         self.execute_w(entry_type)
                     except Exception as e:
                         if e.args[0] == "SQLITE_CONSTRAINT_UNIQUE":
-                            print("Entry already exists")
+                            Utils.print("Entry already exists")
                         else:
                             raise
                 case "d":
-                    self.execute_d(entry_type)
+                    try:
+                        self.execute_d(entry_type)
+                    except Exception as e:
+                        if e.args[0] == "NO_DATA_FOUND":
+                            Utils.print("Entry does not exist")
+                        else:
+                            raise
                 case "!":
                     break
                 case _:
-                    print("Invalid option")
+                    Utils.print("Invalid option")
 
     def execute_r(self, entry_type: str):
-        entry_name = input(Messages.ENTER_NAME)
+        entry_name = Utils.input(Messages.ENTER_NAME)
         if entry_name == "!":
             return
         if entry_type == "Notes":
@@ -64,10 +76,10 @@ class OperationsModule:
             self.read_file(entry_name)
 
     def execute_w(self, entry_type: str):
-        entry_name = input(Messages.ENTER_NAME)
+        entry_name = Utils.input(Messages.ENTER_NAME)
         if entry_name == "!":
             return
-        entry_file = input(Messages.ENTER_FILE)
+        entry_file = Utils.input(Messages.ENTER_FILE)
         if entry_file == "!":
             return
         if entry_type == "Notes":
@@ -76,7 +88,7 @@ class OperationsModule:
             self.write_file(entry_name, entry_file)
 
     def execute_d(self, entry_type: str):
-        entry_name = input(Messages.ENTER_NAME)
+        entry_name = Utils.input(Messages.ENTER_NAME)
         if entry_name == "!":
             return
         if entry_type == "Notes":
@@ -86,6 +98,7 @@ class OperationsModule:
 
     def read_note(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
+        self.db_engine.is_note_present(enc_name)
         file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
         obj_names = [
             entry[2]
@@ -100,7 +113,7 @@ class OperationsModule:
                 obj_array += obj_file.read()
 
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
-        print(dec_obj_array.decode())
+        Utils.print(dec_obj_array.decode(), is_colored=False)
 
     def write_note(self, entry_name: str, entry_file: str):
         obj_name = self.db_engine.get_reference("curr_obj")
@@ -116,6 +129,7 @@ class OperationsModule:
 
     def del_note(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
+        self.db_engine.is_note_present(enc_name)
         file_id = self.db_engine.execute(Queries.GET_NOTE_ID, (enc_name,)).fetchone()[0]
         objects = [
             (entry[0], entry[2])
@@ -134,11 +148,14 @@ class OperationsModule:
 
     def read_file(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
-        dest_file = input(Messages.ENTER_FILE)
+        self.db_engine.is_file_present(enc_name)
+        dest_file = Utils.input(Messages.ENTER_FILE)
         if dest_file == "!":
             return
         if os.path.isfile(dest_file):
-            response = input("File already exists, do you want to override (y, n) :")
+            response = Utils.input(
+                "File already exists, do you want to override (y, n) :"
+            )
             if response == "!":
                 return
             if response != "y":
@@ -175,6 +192,7 @@ class OperationsModule:
 
     def del_file(self, entry_name: str):
         enc_name = self.vault_core.encrypt_string(entry_name)
+        self.db_engine.is_file_present(enc_name)
         file_id = self.db_engine.execute(Queries.GET_FILE_ID, (enc_name,)).fetchone()[0]
         objects = [
             (entry[0], entry[2])
