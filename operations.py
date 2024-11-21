@@ -78,13 +78,13 @@ class Operations:
         entry_name = Utils.input(Messages.ENTER_NAME)
         if entry_name == "!":
             return
-        entry_file = Utils.input(Messages.ENTER_FILE)
-        if entry_file == "!":
+        entry_location = Utils.input(Messages.ENTER_LOCATION)
+        if entry_location == "!":
             return
         if entry_type == "Notes":
-            self.write_note(entry_name, entry_file)
+            self.write_note(entry_name, entry_location)
         else:
-            self.write_file(entry_name, entry_file)
+            self.write_file(entry_name, entry_location)
 
     def execute_d(self, entry_type: str):
         entry_name = Utils.input(Messages.ENTER_NAME)
@@ -107,9 +107,13 @@ class Operations:
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
         Utils.print(dec_obj_array.decode(), is_colored=False)
 
-    def write_note(self, entry_name: str, entry_file: str):
+    def write_note(self, entry_name: str, entry_location: str):
+        if not os.path.isfile(os.path.join(entry_location, entry_name)):
+            Utils.print("File does not exist")
+            return
+
         obj_name = self.db_engine.get_reference("curr_obj")
-        with open(entry_file, "r") as note_file:
+        with open(os.path.join(entry_location, entry_name), "r") as note_file:
             with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
                 obj_file.write(self.vault_core.encrypt_bytes(note_file.read().encode()))
 
@@ -133,10 +137,10 @@ class Operations:
         enc_name = self.vault_core.encrypt_string(entry_name)
         objects = self.db_engine.get_file_objects(enc_name)
 
-        dest_file = Utils.input(Messages.ENTER_FILE)
-        if dest_file == "!":
+        dest_location = Utils.input(Messages.ENTER_LOCATION)
+        if dest_location == "!":
             return
-        if os.path.isfile(dest_file):
+        if os.path.isfile(os.path.join(dest_location, entry_name)):
             response = Utils.input(
                 "File already exists, do you want to override (y, n) :"
             )
@@ -151,12 +155,16 @@ class Operations:
                 obj_array += obj_file.read()
 
         dec_obj_array = self.vault_core.decrypt_bytes(obj_array)
-        with open(dest_file, "wb") as data_file:
+        with open(os.path.join(dest_location, entry_name), "wb") as data_file:
             data_file.write(dec_obj_array)
 
-    def write_file(self, entry_name: str, entry_file: str):
+    def write_file(self, entry_name: str, entry_location: str):
+        if not os.path.isfile(os.path.join(entry_location, entry_name)):
+            Utils.print("File does not exist")
+            return
+
         obj_name = self.db_engine.get_reference("curr_obj")
-        with open(entry_file, "rb") as data_file:
+        with open(os.path.join(entry_location, entry_name), "rb") as data_file:
             with open(os.path.join(Constants.VAULT_DIR, obj_name), "wb") as obj_file:
                 obj_file.write(self.vault_core.encrypt_bytes(data_file.read()))
 

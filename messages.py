@@ -10,4 +10,4 @@ class Messages:
     EXIT = "Thank you for using Vault"
 
     ENTER_NAME = "Enter name : "
-    ENTER_FILE = "Enter file location : "
+    ENTER_LOCATION = "Enter location : "
