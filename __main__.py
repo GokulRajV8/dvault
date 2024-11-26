@@ -2,6 +2,7 @@ import os
 
 from . import Constants
 from . import DBEngine
+from . import FileInterface
 from . import Operations
 from . import Utils
 from . import VaultCore
@@ -39,9 +40,16 @@ def menu_loop(vault_core: VaultCore, db_engine: DBEngine):
     while True:
         option = Utils.input("Do you want to process notes or files (n, f) : ")
         if option == Constants.OPTION_BACK:
-            break
-        else:
-            operations.execute(option)
+            return
+        match option:
+            case "n":
+                entry_type = Constants.ENTRY_TYPE_NOTES
+            case "f":
+                entry_type = Constants.ENTRY_TYPE_FILES
+            case _:
+                Utils.print("Invalid option")
+                continue
+        operations.execute(entry_type)
 
 
 if __name__ == "__main__":
