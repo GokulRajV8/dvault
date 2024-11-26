@@ -1,1 +1,7 @@
-__pycache__
+# python cache
+__pycache__/
+
+# pypi build
+dist/
+build/
+dvault.egg-info/
