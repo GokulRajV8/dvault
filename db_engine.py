@@ -30,10 +30,7 @@ class DBEngine:
             result_cursor = self.__db_cursor.execute(query, params)
             return result_cursor
         except sqlite3.Error:
-            raise RuntimeError(
-                "Fatal error occurred while accessing database, most likely due to corruption.\n"
-                "Kindly delete all files present in ~/Vault as they are tampered"
-            )
+            raise RuntimeError(Constants.ERR_SQLITE_FATAL)
 
     def __execute(self, query: str, params: tuple = ()) -> sqlite3.Cursor:
         try:
@@ -47,10 +44,7 @@ class DBEngine:
             ]:
                 raise RuntimeError(e.sqlite_errorname)
             else:
-                raise RuntimeError(
-                    "Fatal error occurred while accessing database, most likely due to corruption.\n"
-                    "Kindly delete all files present in ~/Vault as they are tampered"
-                )
+                raise RuntimeError(Constants.ERR_SQLITE_FATAL)
 
     def __get_objects(self, file_id: str) -> list[tuple]:
         raw_data = self.__execute_without_commit(

@@ -18,6 +18,10 @@ class Constants:
     ERR_SQLITE_BUSY = "SQLITE_BUSY"
     ERR_SQLITE_CONSTRAINT_UNIQUE = "SQLITE_CONSTRAINT_UNIQUE"
     ERR_SQLITE_NO_DATA_FOUND = "NO_DATA_FOUND"
+    ERR_SQLITE_FATAL = (
+        "Fatal error occurred while accessing database, most likely due to corruption.\n"
+        "Kindly delete all files present in ~/Vault as they are tampered"
+    )
 
     ERR_FILE_MISSING = "FILE_MISSING"
     ERR_OBJ_MISSING = "OBJ_MISSING"

@@ -2,7 +2,6 @@ import os
 
 from . import Constants
 from . import DBEngine
-from . import FileInterface
 from . import Operations
 from . import Utils
 from . import VaultCore
