@@ -1,14 +1,31 @@
+[build-system]
+    requires = ["hatchling"]
+    build-backend = "hatchling.build"
+
 [project]
-name = "dvault"
-version = "1.0"
-description = "To keep your data safe from others' eyes"
-authors = [
-    { name = "Gokul Raj V", email = "gokulraj059@gmail.com" },
-]
-requires-python = ">= 3.8"
-dependencies = [
-    "cryptography",
-]
+    name = "dvault"
+    version = "1.0.0"
+    description = "To keep your data safe from others' eyes"
+    authors = [
+        { name = "Gokul Raj", email = "gokulraj059@gmail.com" },
+    ]
+    readme = "README.md"
+    license = { file = "LICENSE" }
+
+    requires-python = ">= 3.8"
+    dependencies = [
+        "cryptography",
+    ]
+
+    keywords = ["vault", "filestore", "encryption"]
+    classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Natural Language :: English",
+        "Operating System :: OS Independent",
+        "Topic :: Utilities"
+    ]
 
 [project.urls]
-Homepage = "https://github.com/GokulRajV8/dvault"
+    Homepage = "https://github.com/GokulRajV8/dvault"

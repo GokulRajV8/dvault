@@ -3,5 +3,3 @@ __pycache__/
 
 # pypi build
 dist/
-build/
-dvault.egg-info/
