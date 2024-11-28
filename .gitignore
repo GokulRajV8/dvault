@@ -1,5 +1,7 @@
-# python cache
-__pycache__/
+# development
+__pycache__
+/.venv
 
-# pypi build
-dist/
+# build
+/build
+/*.egg-info
