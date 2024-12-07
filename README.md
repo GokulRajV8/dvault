@@ -9,7 +9,7 @@ A python module to store text documents as notes and other files in completely e
 Run the below command
 
 ```
-pip install dvault
+pip install git+https://github.com/GokulRajV8/dvault
 ```
 
 ## Usage

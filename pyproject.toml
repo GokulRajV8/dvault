@@ -4,7 +4,7 @@
 
 [project]
     name = "dvault"
-    version = "1.1"
+    version = "1.0"
     description = "To keep your data safe from others' eyes"
     authors = [
         { name = "Gokul Raj", email = "gokulraj059@gmail.com" },

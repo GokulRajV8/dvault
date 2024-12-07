@@ -58,7 +58,7 @@ if __name__ == "__main__":
         if not os.path.isdir(Constants.VAULT_DIR):
             raise FileNotFoundError(
                 "Vault directory is not present at your home directory\n"
-                "Kindly create ~/Vault directory before starting me"
+                "Kindly create ~/vault directory before starting me"
             )
 
         # if the database is not present or empty, create a new one
