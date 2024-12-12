@@ -17,15 +17,5 @@
         "cryptography",
     ]
 
-    keywords = ["vault", "filestore", "encryption"]
-    classifiers = [
-        "Development Status :: 5 - Production/Stable",
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Natural Language :: English",
-        "Operating System :: OS Independent",
-        "Topic :: Utilities"
-    ]
-
 [project.urls]
     Homepage = "https://github.com/GokulRajV8/dvault"
